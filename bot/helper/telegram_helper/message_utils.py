@@ -28,6 +28,25 @@ async def sendMessage(message, text, buttons=None, block=True):
         LOGGER.error(str(e))
         return str(e)
 
+async def sendMessagenoq(message, text, buttons=None, block=True):
+    try:
+        return await message.reply(
+            text=text,
+            quote=False,
+            disable_web_page_preview=True,
+            disable_notification=True,
+            reply_markup=buttons,
+        )
+    except FloodWait as f:
+        LOGGER.warning(str(f))
+        if block:
+            await sleep(f.value * 1.2)
+            return await sendMessage(message, text, buttons)
+        return str(f)
+    except Exception as e:
+        LOGGER.error(str(e))
+        return str(e)
+
 
 async def editMessage(message, text, buttons=None, block=True):
     try:
