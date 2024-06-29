@@ -256,21 +256,22 @@ class TaskListener(TaskConfig):
         msg = f"<b>Name: </b><code>{escape(self.name)}</code>\n\n<b>Size: </b>{get_readable_file_size(self.size)}"
         LOGGER.info(f"Task Done: {self.name}")
         if self.isLeech:
+            await deleteMessage(self.message)
             msg += f"\n<b>Total Files: </b>{folders}"
             if mime_type != 0:
                 msg += f"\n<b>Corrupted Files: </b>{mime_type}"
             if not files:
-                await sendMessagenoq(message, msg)
+                await sendMessagenoq(self.message, msg)
             else:
                 fmsg = ""
                 for index, (link, name) in enumerate(files.items(), start=1):
                     fmsg += f"{index}. <a href='{link}'>{name}</a>\n"
                     if len(fmsg.encode() + msg.encode()) > 4000:
-                        await sendMessagenoq(message, msg + fmsg)
+                        await sendMessagenoq(self.message, msg + fmsg)
                         await sleep(1)
                         fmsg = ""
                 if fmsg != "":
-                    await sendMessagenoq(message, msg + fmsg)
+                    await sendMessagenoq(self.message, msg + fmsg)
         else:
             msg += f"\n\n<b>Type: </b>{mime_type}"
             if mime_type == "Folder":
