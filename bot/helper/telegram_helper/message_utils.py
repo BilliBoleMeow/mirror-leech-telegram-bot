@@ -30,13 +30,7 @@ async def sendMessage(message, text, buttons=None, block=True):
 
 async def sendMessagenoq(message, text, buttons=None, block=True):
     try:
-        return await message.reply(
-            text=text,
-            quote=False,
-            disable_web_page_preview=True,
-            disable_notification=True,
-            reply_markup=buttons,
-        )
+        return await sendMessage(message, text, buttons)
     except FloodWait as f:
         LOGGER.warning(str(f))
         if block:
