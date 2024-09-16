@@ -58,9 +58,8 @@ LOGGER = getLogger(__name__)
 
 load_dotenv("config.env", override=True)
 
-intervals = {"status": {}, "qb": "", "jd": "", "nzb": "", "stopAll": False}
+intervals = {"status": {}, "qb": "", "nzb": "", "stopAll": False}
 QbTorrents = {}
-jd_downloads = {}
 nzb_jobs = {}
 drives_names = []
 drives_ids = []
@@ -87,7 +86,6 @@ task_dict_lock = Lock()
 queue_dict_lock = Lock()
 qb_listener_lock = Lock()
 nzb_listener_lock = Lock()
-jd_lock = Lock()
 cpu_eater_lock = Lock()
 subprocess_lock = Lock()
 same_directory_lock = Lock()
@@ -156,11 +154,6 @@ if DATABASE_URL:
 else:
     config_dict = {}
 
-if ospath.exists("cfg.zip"):
-    if ospath.exists("/JDownloader/cfg"):
-        rmtree("/JDownloader/cfg", ignore_errors=True)
-    run(["7z", "x", "cfg.zip", "-o/JDownloader"])
-    remove("cfg.zip")
 
 if not ospath.exists(".netrc"):
     with open(".netrc", "w"):
@@ -256,12 +249,6 @@ if len(EXTENSION_FILTER) > 0:
     for x in fx:
         x = x.lstrip(".")
         global_extension_filter.append(x.strip().lower())
-
-JD_EMAIL = environ.get("JD_EMAIL", "")
-JD_PASS = environ.get("JD_PASS", "")
-if len(JD_EMAIL) == 0 or len(JD_PASS) == 0:
-    JD_EMAIL = ""
-    JD_PASS = ""
 
 USENET_SERVERS = environ.get("USENET_SERVERS", "")
 try:
@@ -440,8 +427,6 @@ config_dict = {
     "INCOMPLETE_TASK_NOTIFIER": INCOMPLETE_TASK_NOTIFIER,
     "INDEX_URL": INDEX_URL,
     "IS_TEAM_DRIVE": IS_TEAM_DRIVE,
-    "JD_EMAIL": JD_EMAIL,
-    "JD_PASS": JD_PASS,
     "LEECH_DUMP_CHAT": LEECH_DUMP_CHAT,
     "LEECH_FILENAME_PREFIX": LEECH_FILENAME_PREFIX,
     "LEECH_SPLIT_SIZE": LEECH_SPLIT_SIZE,

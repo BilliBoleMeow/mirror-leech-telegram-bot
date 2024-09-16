@@ -92,7 +92,6 @@ class TaskConfig:
         self.is_leech = False
         self.is_qbit = False
         self.is_nzb = False
-        self.is_jd = False
         self.is_clone = False
         self.is_ytdlp = False
         self.equal_splits = False
@@ -180,18 +179,17 @@ class TaskConfig:
         )
         if self.link not in ["rcl", "gdl"]:
             if (
-                not self.is_jd
-                and is_rclone_path(self.link)
+                self.is_rclone_path(self.link)
                 or is_gdrive_link(self.link)
             ):
                 await self.is_token_exists(self.link, "dl")
         elif self.link == "rcl":
-            if not self.is_ytdlp and not self.is_jd:
+            if not self.is_ytdlp :
                 self.link = await RcloneList(self).get_rclone_path("rcd")
                 if not is_rclone_path(self.link):
                     raise ValueError(self.link)
         elif self.link == "gdl":
-            if not self.is_ytdlp and not self.is_jd:
+            if not self.is_ytdlp :
                 self.link = await GoogleDriveList(self).get_target_id("gdd")
                 if not is_gdrive_id(self.link):
                     raise ValueError(self.link)
@@ -458,8 +456,7 @@ class TaskConfig:
             self.client,
             nextmsg,
             self.is_qbit,
-            self.is_leech,
-            self.is_jd,
+            self.is_leech,,
             self.is_nzb,
             self.same_dir,
             self.bulk,
@@ -492,8 +489,7 @@ class TaskConfig:
                 self.client,
                 nextmsg,
                 self.is_qbit,
-                self.is_leech,
-                self.is_jd,
+                self.is_leech,,
                 self.is_nzb,
                 self.same_dir,
                 self.bulk,

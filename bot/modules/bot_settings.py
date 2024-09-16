@@ -35,7 +35,6 @@ from bot import (
     qbittorrent_client,
     sabnzbd_client,
     bot,
-    jd_downloads,
     nzb_options,
     get_nzb_options,
     get_qb_options,
@@ -47,7 +46,6 @@ from ..helper.ext_utils.bot_utils import (
     new_task,
 )
 from ..helper.ext_utils.db_handler import database
-from ..helper.ext_utils.jdownloader_booter import jdownloader
 from ..helper.ext_utils.task_manager import start_from_queued
 from ..helper.mirror_leech_utils.rclone_utils.serve import rclone_serve_booter
 from ..helper.telegram_helper.bot_commands import BotCommands
@@ -85,7 +83,6 @@ async def get_buttons(key=None, edit_type=None):
         buttons.data_button("Qbit Settings", "botset qbit")
         buttons.data_button("Aria2c Settings", "botset aria")
         buttons.data_button("Sabnzbd Settings", "botset nzb")
-        buttons.data_button("JDownloader Sync", "botset syncjd")
         buttons.data_button("Close", "botset close")
         msg = "Bot Settings:"
     elif edit_type is not None:
@@ -332,8 +329,6 @@ async def edit_variable(_, message, pre_message, key):
         "RCLONE_SERVE_PASS",
     ]:
         await rclone_serve_booter()
-    elif key in ["JD_EMAIL", "JD_PASS"]:
-        jdownloader.initiate()
     elif key == "RSS_DELAY":
         add_job()
     elif key == "USET_SERVERS":
@@ -440,35 +435,6 @@ async def edit_nzb_server(_, message, pre_message, key, index=0):
     if config_dict["DATABASE_URL"]:
         await database.update_config({"USENET_SERVERS": config_dict["USENET_SERVERS"]})
 
-
-async def sync_jdownloader():
-    if not config_dict["DATABASE_URL"] or jdownloader.device is None:
-        return
-    try:
-        await wait_for(retry_function(jdownloader.update_devices), timeout=10)
-    except:
-        is_connected = await jdownloader.jdconnect()
-        if not is_connected:
-            LOGGER.error(jdownloader.error)
-            return
-        isDeviceConnected = await jdownloader.connectToDevice()
-        if not isDeviceConnected:
-            LOGGER.error(jdownloader.error)
-            return
-    await jdownloader.device.system.exit_jd()
-    if await aiopath.exists("cfg.zip"):
-        await remove("cfg.zip")
-    is_connected = await jdownloader.jdconnect()
-    if not is_connected:
-        LOGGER.error(jdownloader.error)
-        return
-    isDeviceConnected = await jdownloader.connectToDevice()
-    if not isDeviceConnected:
-        LOGGER.error(jdownloader.error)
-    await (
-        await create_subprocess_exec("7z", "a", "cfg.zip", "/JDownloader/cfg")
-    ).wait()
-    await database.update_private_file("cfg.zip")
 
 
 @new_task
@@ -588,24 +554,6 @@ async def edit_bot_settings(client, query):
         await query.answer()
         globals()["start"] = 0
         await update_buttons(message, None)
-    elif data[1] == "syncjd":
-        if not config_dict["JD_EMAIL"] or not config_dict["JD_PASS"]:
-            await query.answer(
-                "No Email or Password provided!",
-                show_alert=True,
-            )
-            return
-        if jd_downloads:
-            await query.answer(
-                "You can't sync settings while using jdownloader!",
-                show_alert=True,
-            )
-            return
-        await query.answer(
-            "Syncronization Started. JDownloader will get restarted. It takes up to 5 sec!",
-            show_alert=True,
-        )
-        await sync_jdownloader()
     elif data[1] in ["var", "aria", "qbit", "nzb", "nzbserver"] or data[1].startswith(
         "nzbser"
     ):
@@ -667,10 +615,6 @@ async def edit_bot_settings(client, query):
                 index_urls[0] = ""
         elif data[2] == "INCOMPLETE_TASK_NOTIFIER" and config_dict["DATABASE_URL"]:
             await database.trunc_table("tasks")
-        elif data[2] in ["JD_EMAIL", "JD_PASS"]:
-            jdownloader.device = None
-            jdownloader.error = "JDownloader Credentials not provided!"
-            await create_subprocess_exec("pkill", "-9", "-f", "java")
         elif data[2] == "USENET_SERVERS":
             for s in config_dict["USENET_SERVERS"]:
                 await sabnzbd_client.delete_config("servers", s["name"])
@@ -995,11 +939,6 @@ async def load_config():
                 x = x.lstrip(".")
             global_extension_filter.append(x.strip().lower())
 
-    JD_EMAIL = environ.get("JD_EMAIL", "")
-    JD_PASS = environ.get("JD_PASS", "")
-    if len(JD_EMAIL) == 0 or len(JD_PASS) == 0:
-        JD_EMAIL = ""
-        JD_PASS = ""
 
     USENET_SERVERS = environ.get("USENET_SERVERS", "")
     try:
@@ -1240,8 +1179,6 @@ async def load_config():
             "INCOMPLETE_TASK_NOTIFIER": INCOMPLETE_TASK_NOTIFIER,
             "INDEX_URL": INDEX_URL,
             "IS_TEAM_DRIVE": IS_TEAM_DRIVE,
-            "JD_EMAIL": JD_EMAIL,
-            "JD_PASS": JD_PASS,
             "LEECH_DUMP_CHAT": LEECH_DUMP_CHAT,
             "LEECH_FILENAME_PREFIX": LEECH_FILENAME_PREFIX,
             "LEECH_SPLIT_SIZE": LEECH_SPLIT_SIZE,
