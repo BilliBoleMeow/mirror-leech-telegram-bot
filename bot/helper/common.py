@@ -179,7 +179,8 @@ class TaskConfig:
         )
         if self.link not in ["rcl", "gdl"]:
             if (
-                self.is_rclone_path(self.link)
+                not self.is_clone
+                and is_rclone_path(self.link)
                 or is_gdrive_link(self.link)
             ):
                 await self.is_token_exists(self.link, "dl")
