@@ -747,9 +747,6 @@ async def rss_monitor():
                     else:
                         feed_msg = f"<b>Name: </b><code>{item_title.replace('>', '').replace('<', '')}</code>\n\n"
                         feed_msg += f"<b>Link: </b><code>{url}</code>"
-                    feed_msg += (
-                        f"\n<b>Tag: </b><code>{data['tag']}</code> <code>{user}</code>"
-                    )
                     await send_rss(feed_msg, rss_chat_id, rss_topic_id)
                     feed_count += 1
                 async with rss_dict_lock:
