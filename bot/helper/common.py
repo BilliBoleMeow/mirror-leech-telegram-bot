@@ -489,7 +489,7 @@ class TaskConfig:
                 self.client,
                 nextmsg,
                 self.is_qbit,
-                self.is_leech,,
+                self.is_leech,
                 self.is_nzb,
                 self.same_dir,
                 self.bulk,
