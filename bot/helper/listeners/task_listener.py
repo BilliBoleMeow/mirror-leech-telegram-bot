@@ -43,6 +43,7 @@ from ..telegram_helper.button_build import ButtonMaker
 from ..telegram_helper.message_utils import (
     send_message,
     delete_status,
+    deleteMessage,
     update_status_message,
 )
 
