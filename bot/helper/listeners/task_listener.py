@@ -269,7 +269,6 @@ class TaskListener(TaskConfig):
             msg += f"\n<b>Total Files: </b>{folders}"
             if mime_type != 0:
                 msg += f"\n<b>Corrupted Files: </b>{mime_type}"
-            msg += f"\n<b>cc: </b>{self.tag}\n\n"
             if not files:
                 await send_message(self.message, msg)
             else:
