@@ -483,12 +483,9 @@ if ospath.exists("list_drives.txt"):
                 index_urls.append(temp[2])
             else:
                 index_urls.append("")
-
+PORT = environ.get('PORT', SERVER_PORT)
 if BASE_URL:
-    Popen(
-        f"gunicorn web.wserver:app --bind 0.0.0.0:{BASE_URL_PORT} --worker-class gevent",
-        shell=True,
-    )
+    Popen([f"gunicorn web.wserver:app --bind 0.0.0.0:{PORT}"], shell=True)
 
 if ospath.exists("accounts.zip"):
     if ospath.exists("accounts"):
