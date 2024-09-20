@@ -252,7 +252,7 @@ class Mirror(TaskListener):
                     reply_to = None
             elif reply_to.document and (
                 file_.mime_type == "application/x-bittorrent"
-                or file_.file_name.endswith((".torrent", ".dlc", ".nzb"))
+                or file_.file_name.endswith((".torrent", ".nzb"))
             ):
                 self.link = await reply_to.download()
                 file_ = None
