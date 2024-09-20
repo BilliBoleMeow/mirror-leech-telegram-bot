@@ -483,6 +483,12 @@ if ospath.exists("list_drives.txt"):
                 index_urls.append(temp[2])
             else:
                 index_urls.append("")
+try:
+    SERVER_PORT = getConfig('SERVER_PORT')
+    if len(SERVER_PORT) == 0:
+        raise KeyError
+except:
+    SERVER_PORT = 80                
 PORT = environ.get('PORT', SERVER_PORT)
 if BASE_URL:
     Popen([f"gunicorn web.wserver:app --bind 0.0.0.0:{PORT}"], shell=True)
