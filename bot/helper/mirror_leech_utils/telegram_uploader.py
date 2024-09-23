@@ -365,6 +365,7 @@ class TelegramUploader:
         if self._thumb is not None and not await aiopath.exists(self._thumb):
             self._thumb = None
         thumb = self._thumb
+        await sleep(3.0)
         self._is_corrupted = False
         try:
             is_video, is_audio, is_image = await get_document_type(self._up_path)
@@ -383,7 +384,6 @@ class TelegramUploader:
                 or (not is_video and not is_audio and not is_image)
             ):
                 key = "documents"
-                await sleep(2.0)
                 if is_video and thumb is None:
                     thumb = await get_video_thumbnail(self._up_path, None)
 
