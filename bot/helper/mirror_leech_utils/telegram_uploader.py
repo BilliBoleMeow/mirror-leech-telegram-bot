@@ -383,6 +383,7 @@ class TelegramUploader:
                 or (not is_video and not is_audio and not is_image)
             ):
                 key = "documents"
+                await sleep(2.0)
                 if is_video and thumb is None:
                     thumb = await get_video_thumbnail(self._up_path, None)
 
