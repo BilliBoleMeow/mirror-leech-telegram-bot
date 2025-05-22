@@ -96,7 +96,6 @@ class TelegramUploader:
             msg = (
                 self._listener.message.link
                 if self._listener.is_super_chat
-                else self._listener.message.text.lstrip("/")
             )
             try:
                 if self._user_session:
