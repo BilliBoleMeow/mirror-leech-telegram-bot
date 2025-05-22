@@ -489,4 +489,15 @@ class TelegramUploader:
     @property
     def speed(self):
         try:
-            return self._processed_bytes / (time() - self._start_
+            return self._processed_bytes / (time() - self._start_time)
+        except:
+            return 0
+
+    @property
+    def processed_bytes(self):
+        return self._processed_bytes
+
+    async def cancel_task(self):
+        self._listener.is_cancelled = True
+        LOGGER.info(f"Cancelling Upload: {self._listener.name}")
+        await self._listener.on_upload_error("your upload has been stopped!")
