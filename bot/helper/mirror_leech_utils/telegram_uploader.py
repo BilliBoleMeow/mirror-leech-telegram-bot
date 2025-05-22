@@ -93,10 +93,6 @@ class TelegramUploader:
 
     async def _msg_to_reply(self):
         if self._listener.up_dest:
-            msg = (
-                self._listener.message.link
-                if self._listener.is_super_chat
-            )
             try:
                 if self._user_session:
                     self._sent_msg = await TgClient.user.send_message(
