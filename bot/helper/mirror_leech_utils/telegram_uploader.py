@@ -220,7 +220,7 @@ class TelegramUploader:
 
     async def upload(self):
         await self._user_settings()
-        res = await self._msg_to_reply()
+        res = await sleep(1)
         if not res:
             return
         for dirpath, _, files in natsorted(await sync_to_async(walk, self._path)):
