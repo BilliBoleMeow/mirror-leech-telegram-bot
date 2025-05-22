@@ -93,6 +93,11 @@ class TelegramUploader:
 
     async def _msg_to_reply(self):
         if self._listener.up_dest:
+            msg = (
+                self._listener.message.link
+                if self._listener.is_super_chat
+                else self._listener.message.text.lstrip("/")
+            )
             try:
                 if self._user_session:
                     self._sent_msg = await TgClient.user.send_message(
@@ -484,15 +489,4 @@ class TelegramUploader:
     @property
     def speed(self):
         try:
-            return self._processed_bytes / (time() - self._start_time)
-        except:
-            return 0
-
-    @property
-    def processed_bytes(self):
-        return self._processed_bytes
-
-    async def cancel_task(self):
-        self._listener.is_cancelled = True
-        LOGGER.info(f"Cancelling Upload: {self._listener.name}")
-        await self._listener.on_upload_error("your upload has been stopped!")
+            return self._processed_bytes / (time() - self._start_
