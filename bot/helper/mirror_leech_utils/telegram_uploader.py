@@ -220,6 +220,9 @@ class TelegramUploader:
 
     async def upload(self):
         await self._user_settings()
+        res = await self._msg_to_reply()
+        if not res:
+            return
         for dirpath, _, files in natsorted(await sync_to_async(walk, self._path)):
             if dirpath.strip().endswith("/yt-dlp-thumb"):
                 continue
@@ -359,7 +362,7 @@ class TelegramUploader:
                     return
                 if thumb == "none":
                     thumb = None
-                self._sent_msg = await self._sent_msg.document(
+                self._sent_msg = await self._sent_msg.reply_document(
                     document=self._up_path,
                     quote=True,
                     thumb=thumb,
