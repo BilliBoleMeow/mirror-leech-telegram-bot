@@ -359,7 +359,7 @@ class TelegramUploader:
                     return
                 if thumb == "none":
                     thumb = None
-                self._sent_msg = await self._sent_msg.reply_document(
+                self._sent_msg = await self._sent_msg.document(
                     document=self._up_path,
                     quote=True,
                     thumb=thumb,
