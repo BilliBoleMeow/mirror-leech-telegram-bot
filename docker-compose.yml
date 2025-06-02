@@ -10,8 +10,8 @@ services:
     environment:
     #  # SetUp --> https://github.com/qdm12/gluetun-wiki/tree/main/setup#setup
       - VPN_SERVICE_PROVIDER=vyprvpn
-      - OPENVPN_USER=avinash@eachence.com
-      - OPENVPN_PASSWORD=9Lu>?XC%rGj:H,n
+      - OPENVPN_USER=a.com
+      - OPENVPN_PASSWORD=9
       - SERVER_REGIONS=india
       - TZ=Asia/Kolkata
       - FIREWALL_VPN_INPUT_PORTS=80,8090,52496
