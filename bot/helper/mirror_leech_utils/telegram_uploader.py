@@ -28,7 +28,7 @@ from tenacity import (
 # Assuming these are correctly pathed in your project structure
 from ...core.config_manager import Config
 from ...core.mltb_client import TgClient
-from ..ext_utils.bot_utils import sync_to_async, get_readable_file_size # Added get_readable_file_size for listener example
+from ..ext_utils.bot_utils import sync_to_async
 from ..ext_utils.files_utils import is_archive, get_base_name
 from ..telegram_helper.message_utils import delete_message
 from ..ext_utils.media_utils import (
