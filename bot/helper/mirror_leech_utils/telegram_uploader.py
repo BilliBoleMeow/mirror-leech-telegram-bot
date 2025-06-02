@@ -58,19 +58,18 @@ class TelegramUploader:
         self._path = path # Root path of the download/leech task
         self._start_time = time()
         self._total_files = 0
-        # Construct default thumb path more safely
         self._thumb = self._listener.thumb or (f"thumbnails/{listener.user_id}.jpg" if hasattr(listener, 'user_id') else "thumbnails/default.jpg")
         self._msgs_dict = {}
         self._corrupted = 0
         self._is_corrupted = False
-        self._media_dict = {"videos": {}, "documents": {}} # Used for grouping files like .001, .002
+        self._media_dict = {"videos": {}, "documents": {}} 
         self._last_msg_in_group = False
-        self._up_path = "" # Current file being processed path (on disk, can be renamed)
+        self._up_path = "" 
         self._lprefix = ""
         self._media_group = False
         self._is_private = False
-        self._sent_msg = None # The last message sent by the uploader, to chain replies
-        self._initial_up_dest_message = None # Stores the very first "Task Initiated" message if up_dest is used
+        self._sent_msg = None 
+        self._initial_up_dest_message = None 
         self._user_session = self._listener.user_transmission
         self._error = ""
 
@@ -115,12 +114,7 @@ class TelegramUploader:
                 )
                 self._sent_msg = sent_initial_msg
                 self._initial_up_dest_message = sent_initial_msg 
-                if self._sent_msg:
-                    # Accessing chat.type might raise AttributeError if chat is None (though unlikely here)
-                    # For Pyrogram, chat type enums are like pyrogram.enums.ChatType.PRIVATE
-                    # .name would give "PRIVATE". Ensure this matches Pyrogram's actual enum behavior.
-                    # A safer check might be: from pyrogram.enums import ChatType; if self._sent_msg.chat.type == ChatType.PRIVATE:
-                    if hasattr(self._sent_msg.chat, 'type') and self._sent_msg.chat.type:
+                if self._sent_msg and self._sent_msg.chat and self._sent_msg.chat.type : # Ensure chat and type exist
                          self._is_private = self._sent_msg.chat.type.name == "PRIVATE" 
             except Exception as e:
                 LOGGER.error(f"Error sending initial message to up_dest: {e}")
@@ -161,8 +155,6 @@ class TelegramUploader:
             prefixed_disk_filename = f"{safe_lprefix_for_disk} {file_original_name}"
             new_disk_path = ospath.join(current_dirpath, prefixed_disk_filename)
 
-            # self._up_path should be the initial path of the file for this iteration
-            # before any renaming in this method.
             if self._up_path != new_disk_path:
                 try:
                     if await aiopath.exists(self._up_path): 
@@ -273,10 +265,6 @@ class TelegramUploader:
                 media=input_media_list, quote=True, disable_notification=True,
             )
             
-            # Do NOT delete message_objects_list items here as they are the final files,
-            # already sent and now being presented as a group.
-            # Only clear the tracking dictionary.
-            
             if key in self._media_dict and subkey in self._media_dict[key]:
                 del self._media_dict[key][subkey]
 
@@ -296,9 +284,9 @@ class TelegramUploader:
 
         for dirpath, _, files in natsorted(await sync_to_async(walk, self._path)):
             if self._listener.is_cancelled: return
-            if dirpath.strip().endswith("/yt-dlp-thumb"): # Skip yt-dlp-thumb folder
+            if dirpath.strip().endswith("/yt-dlp-thumb"): 
                 continue
-            if dirpath.strip().endswith("_mltbss"): # Handle screenshots folder
+            if dirpath.strip().endswith("_mltbss"): 
                  await self._send_screenshots(dirpath, natsorted(files))
                  if not self._listener.is_cancelled:
                      await rmtree(dirpath, ignore_errors=True)
@@ -440,7 +428,7 @@ class TelegramUploader:
         generated_thumb_disk_path = None 
         final_caption_to_send = base_caption_part 
 
-        # ---- Append detailed media info to caption (No Emojis, New Lines) ----
+        # ---- Append detailed media info to caption (No Emojis, New Lines, No Subtitles, Extra Line Space) ----
         if is_video or is_audio:
             try:
                 streams_info = await get_detailed_media_streams_info(file_path_on_disk)
@@ -453,7 +441,7 @@ class TelegramUploader:
                     quality = f"{v_height}p" if v_height else ""
                     info_str = f"{v_codec} {quality}".strip()
                     if info_str and info_str.lower() != "n/a": 
-                        media_info_parts.append(f"Video: {info_str}")
+                        media_info_parts.append(f"Video - {info_str}")
                 
                 audio_data = streams_info.get("audio_streams", [])
                 if audio_data:
@@ -464,14 +452,13 @@ class TelegramUploader:
                     else: langs_to_show = valid_langs
                     
                     langs_str = ", ".join(langs_to_show)
-                    media_info_parts.append(f"Audio: {len(audio_data)} ({langs_str})")
+                    media_info_parts.append(f"Audio - {len(audio_data)} ({langs_str})")
 
-                subs_data = streams_info.get("subtitle_streams", [])
-                if subs_data: 
-                    media_info_parts.append(f"Subtitles: {len(subs_data)}")
+                # Subtitle information is intentionally omitted.
 
                 if media_info_parts:
-                    media_info_string = "\n" + "\n".join(media_info_parts) 
+                    # Each part on a new line, with an EXTRA blank line after the filename
+                    media_info_string = "\n\n" + "\n".join(media_info_parts) # Added extra \n here
                     final_caption_to_send = f"{final_caption_to_send}{media_info_string}"
             except Exception as e_media_info:
                 LOGGER.warning(f"Could not get/format detailed media info for {file_path_on_disk}: {e_media_info}")
@@ -599,7 +586,7 @@ class TelegramUploader:
             
             if isinstance(upload_err, BadRequest) and upload_as_type_key and upload_as_type_key != "documents":
                 LOGGER.info(f"Retrying As Document due to BadRequest for {upload_as_type_key} at {file_path_on_disk}")
-                # For document retry, use the simple base_caption_part.
+                # For document retry, use the simple base_caption_part to avoid complex caption on generic doc.
                 return await self._upload_file(base_caption_part, file_original_name, file_path_on_disk, True) 
             raise upload_err
 
