@@ -11,11 +11,90 @@ from os import path as ospath
 from re import search as re_search, escape
 from time import time
 from aioshutil import rmtree
+import asyncio
+import json
 
 from ... import LOGGER, cpu_no, DOWNLOAD_DIR
 from .bot_utils import cmd_exec, sync_to_async
 from .files_utils import get_mime_type, is_archive, is_archive_split
 from .status_utils import time_to_seconds
+
+
+async def get_detailed_media_streams_info(file_path: str) -> dict:
+    """
+    Extracts detailed media stream information using ffprobe.
+    Returns a dictionary with 'video_streams', 'audio_streams', 'subtitle_streams'.
+    Each stream entry is a dictionary of its properties.
+    Returns an empty dict if ffprobe fails or the file is invalid.
+    """
+    try:
+        command = [
+            "ffprobe",
+            "-v", "quiet",
+            "-print_format", "json",
+            "-show_streams", # Get all streams
+            file_path
+        ]
+
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+
+        if process.returncode != 0:
+            error_message = stderr.decode().strip()
+            # LOGGER.error(f"ffprobe error for {file_path}: {error_message}") # Use your project's logger
+            print(f"ffprobe error for {file_path}: {error_message}") 
+            return {}
+
+        probe_data = json.loads(stdout.decode())
+        
+        result = {
+            "video_streams": [],
+            "audio_streams": [],
+            "subtitle_streams": []
+        }
+
+        if 'streams' in probe_data:
+            first_video_stream_taken = False
+            for stream in probe_data['streams']:
+                stream_type = stream.get('codec_type')
+                if stream_type == 'video' and not first_video_stream_taken:
+                    # Typically, the first video stream is the main one.
+                    result['video_streams'].append({
+                        'codec_name': stream.get('codec_name'),
+                        'height': stream.get('height'),
+                        'width': stream.get('width'),
+                        'profile': stream.get('profile'),
+                        'bit_rate': stream.get('bit_rate'),
+                        'display_aspect_ratio': stream.get('display_aspect_ratio'),
+                    })
+                    first_video_stream_taken = True # Only take the first video stream
+                elif stream_type == 'audio':
+                    result['audio_streams'].append({
+                        'codec_name': stream.get('codec_name'),
+                        'tags': stream.get('tags', {}), 
+                        'channels': stream.get('channels'),
+                        'channel_layout': stream.get('channel_layout'),
+                        'bit_rate': stream.get('bit_rate'),
+                    })
+                elif stream_type == 'subtitle':
+                    result['subtitle_streams'].append({
+                        'codec_name': stream.get('codec_name'),
+                        'tags': stream.get('tags', {}),
+                    })
+        return result
+
+    except FileNotFoundError:
+        # LOGGER.error("ffprobe command not found. Please install ffmpeg.")
+        print("ffprobe command not found. Please install ffmpeg.")
+        return {}
+    except Exception as e:
+        # LOGGER.error(f"Error getting detailed media info for {file_path}: {str(e)}")
+        print(f"Error getting detailed media info for {file_path}: {str(e)}")
+        return {}
 
 
 async def create_thumb(msg, _id=""):
