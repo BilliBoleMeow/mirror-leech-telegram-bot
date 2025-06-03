@@ -399,9 +399,7 @@ class TelegramUploader:
 
         if self._initial_up_dest_message:
             try:
-                LOGGER.info(f"Attempting to delete initial task message: {self._initial_up_dest_message.id}")
                 await delete_message(self._initial_up_dest_message)
-                LOGGER.info(f"Successfully deleted initial task message.")
             except Exception as e:
                 LOGGER.warning(f"Could not delete initial task message {self._initial_up_dest_message.id}: {e}")
         return
