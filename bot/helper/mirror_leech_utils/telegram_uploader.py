@@ -497,7 +497,7 @@ class TelegramUploader:
                 
                 if self._listener.is_cancelled: return
                 self._sent_msg = await self._sent_msg.reply_document(
-                    document=file_path_on_disk, quote=True, thumb=thumb_for_pyrogram, caption=final_caption_to_send,
+                    document=file_path_on_disk, quote=False, thumb=thumb_for_pyrogram, caption=final_caption_to_send,
                     force_document=True, disable_notification=True, progress=self._upload_progress,
                 )
             elif is_video:
@@ -527,7 +527,7 @@ class TelegramUploader:
 
                 if self._listener.is_cancelled: return
                 self._sent_msg = await self._sent_msg.reply_video(
-                    video=file_path_on_disk, quote=True, caption=final_caption_to_send, duration=duration, 
+                    video=file_path_on_disk, quote=False, caption=final_caption_to_send, duration=duration, 
                     width=width, height=height, thumb=thumb_for_pyrogram, 
                     supports_streaming=True, disable_notification=True, progress=self._upload_progress,
                 )
@@ -536,7 +536,7 @@ class TelegramUploader:
                 duration, artist, title = await get_media_info(file_path_on_disk) 
                 if self._listener.is_cancelled: return
                 self._sent_msg = await self._sent_msg.reply_audio(
-                    audio=file_path_on_disk, quote=True, caption=final_caption_to_send, 
+                    audio=file_path_on_disk, quote=False, caption=final_caption_to_send, 
                     duration=duration, performer=artist, title=title,
                     thumb=thumb_for_pyrogram, disable_notification=True, progress=self._upload_progress,
                 )
@@ -544,7 +544,7 @@ class TelegramUploader:
                 upload_as_type_key = "photos"
                 if self._listener.is_cancelled: return
                 self._sent_msg = await self._sent_msg.reply_photo(
-                    photo=file_path_on_disk, quote=True, caption=final_caption_to_send,
+                    photo=file_path_on_disk, quote=False, caption=final_caption_to_send,
                     disable_notification=True, progress=self._upload_progress,
                 )
 
