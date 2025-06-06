@@ -426,12 +426,13 @@ class TelegramUploader:
         generated_thumb_disk_path = None 
         final_caption_to_send = base_caption_part 
 
-        # ---- Append detailed media info to caption (No Emojis, New Lines, No Subtitles, Extra Line Space) ----
+        # ---- Append detailed media info to caption ----
         if is_video or is_audio:
             try:
                 streams_info = await get_detailed_media_streams_info(file_path_on_disk)
                 media_info_parts = []
 
+                # Video Info
                 if is_video and streams_info.get("video_streams"):
                     vs = streams_info["video_streams"][0] 
                     v_codec = vs.get("codec_name", "N/A").upper()
@@ -439,29 +440,30 @@ class TelegramUploader:
                     quality = f"{v_height}p" if v_height else ""
                     info_str = f"{v_codec} {quality}".strip()
                     if info_str and info_str.lower() != "n/a": 
-                        media_info_parts.append(f"Video - {info_str}")
+                        media_info_parts.append(f"Video: {info_str}")
                 
+                # Audio Info (with new formatting logic)
                 audio_data = streams_info.get("audio_streams", [])
                 if audio_data:
-                    langs = [s.get("tags", {}).get("language", "und").upper()[:3] for s in audio_data]
-                    valid_langs = sorted(list(set(lang for lang in langs if lang != "UND"))) 
-                    if not valid_langs and "UND" in langs: langs_to_show = ["UND"]
-                    elif not valid_langs: langs_to_show = ["N/A"] 
-                    else: langs_to_show = valid_langs
+                    all_langs = [s.get("tags", {}).get("language", "und").upper()[:3] for s in audio_data]
+                    defined_langs = sorted(list(set(lang for lang in all_langs if lang != "UND")))
                     
-                    langs_str = ", ".join(langs_to_show)
-                    media_info_parts.append(f"Audio - {len(audio_data)} ({langs_str})")
-
-                # Subtitle information is intentionally omitted.
+                    if defined_langs:
+                        # If there are defined languages, show count and the languages
+                        langs_str = ", ".join(defined_langs)
+                        media_info_parts.append(f"Audio: {len(audio_data)} ({langs_str})")
+                    else:
+                        # If no defined languages (all are UND or missing), show only the count
+                        media_info_parts.append(f"Audio: {len(audio_data)}")
 
                 if media_info_parts:
-                    # Each part on a new line, with an EXTRA blank line after the filename
-                    media_info_string = "\n\n" + "\n".join(media_info_parts) # Added extra \n here
+                    media_info_string = "\n\n" + "\n".join(media_info_parts)
                     final_caption_to_send = f"{final_caption_to_send}{media_info_string}"
             except Exception as e_media_info:
                 LOGGER.warning(f"Could not get/format detailed media info for {file_path_on_disk}: {e_media_info}")
         # ---- End detailed media info ----
         
+        # --- Thumbnail logic and file upload continues below (same as before) ---
         if not is_image:
             if thumb_to_use_for_upload is None: 
                 fname_no_ext = ospath.splitext(file_original_name)[0]
@@ -497,7 +499,7 @@ class TelegramUploader:
                 
                 if self._listener.is_cancelled: return
                 self._sent_msg = await self._sent_msg.reply_document(
-                    document=file_path_on_disk, quote=False, thumb=thumb_for_pyrogram, caption=final_caption_to_send,
+                    document=file_path_on_disk, quote=True, thumb=thumb_for_pyrogram, caption=final_caption_to_send,
                     force_document=True, disable_notification=True, progress=self._upload_progress,
                 )
             elif is_video:
@@ -527,7 +529,7 @@ class TelegramUploader:
 
                 if self._listener.is_cancelled: return
                 self._sent_msg = await self._sent_msg.reply_video(
-                    video=file_path_on_disk, quote=False, caption=final_caption_to_send, duration=duration, 
+                    video=file_path_on_disk, quote=True, caption=final_caption_to_send, duration=duration, 
                     width=width, height=height, thumb=thumb_for_pyrogram, 
                     supports_streaming=True, disable_notification=True, progress=self._upload_progress,
                 )
@@ -536,7 +538,7 @@ class TelegramUploader:
                 duration, artist, title = await get_media_info(file_path_on_disk) 
                 if self._listener.is_cancelled: return
                 self._sent_msg = await self._sent_msg.reply_audio(
-                    audio=file_path_on_disk, quote=False, caption=final_caption_to_send, 
+                    audio=file_path_on_disk, quote=True, caption=final_caption_to_send, 
                     duration=duration, performer=artist, title=title,
                     thumb=thumb_for_pyrogram, disable_notification=True, progress=self._upload_progress,
                 )
@@ -544,7 +546,7 @@ class TelegramUploader:
                 upload_as_type_key = "photos"
                 if self._listener.is_cancelled: return
                 self._sent_msg = await self._sent_msg.reply_photo(
-                    photo=file_path_on_disk, quote=False, caption=final_caption_to_send,
+                    photo=file_path_on_disk, quote=True, caption=final_caption_to_send,
                     disable_notification=True, progress=self._upload_progress,
                 )
 
@@ -584,9 +586,10 @@ class TelegramUploader:
             
             if isinstance(upload_err, BadRequest) and upload_as_type_key and upload_as_type_key != "documents":
                 LOGGER.info(f"Retrying As Document due to BadRequest for {upload_as_type_key} at {file_path_on_disk}")
-                # For document retry, use the simple base_caption_part to avoid complex caption on generic doc.
                 return await self._upload_file(base_caption_part, file_original_name, file_path_on_disk, True) 
-            raise upload_err
+            raise upload_err    
+
+    
 
     @property
     def speed(self):
