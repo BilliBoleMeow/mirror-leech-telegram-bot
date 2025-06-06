@@ -451,7 +451,7 @@ class TelegramUploader:
                     if defined_langs:
                         # If there are defined languages, show count and the languages
                         langs_str = ", ".join(defined_langs)
-                        media_info_parts.append(f"Audio: {len(audio_data)} ({langs_str})")
+                        media_info_parts.append(f"Audio - {len(audio_data)} ({langs_str})")
                     else:
                         # If no defined languages (all are UND or missing), show only the count
                         media_info_parts.append(f"Audio - {len(audio_data)}")
@@ -472,8 +472,8 @@ class TelegramUploader:
                 if await aiopath.isfile(potential_dlp_thumb):
                     thumb_to_use_for_upload = potential_dlp_thumb
                     generated_thumb_disk_path = potential_dlp_thumb 
-                elif is_audio and not is_video: 
-                    temp_thumb_path = await get_audio_thumbnail(file_path_on_disk)
+                elif is_ and not is_video: 
+                    temp_thumb_path = await get__thumbnail(file_path_on_disk)
                     if temp_thumb_path:
                         thumb_to_use_for_upload = temp_thumb_path
                         generated_thumb_disk_path = temp_thumb_path
@@ -489,7 +489,7 @@ class TelegramUploader:
             thumb_for_pyrogram = thumb_to_use_for_upload
 
         try:
-            if self._listener.as_doc or force_document or (not is_video and not is_audio and not is_image):
+            if self._listener.as_doc or force_document or (not is_video and not is_ and not is_image):
                 upload_as_type_key = "documents"
                 if is_video and not thumb_for_pyrogram: 
                     temp_thumb = await get_video_thumbnail(file_path_on_disk, None)
