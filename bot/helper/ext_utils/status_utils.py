@@ -3,29 +3,85 @@ from psutil import virtual_memory, cpu_percent, disk_usage
 from time import time
 from asyncio import iscoroutinefunction, gather
 
-from ... import task_dict, task_dict_lock, bot_start_time, status_dict, DOWNLOAD_DIR
+# Assuming these imports are available from your project structure
+from ... import (
+    task_dict,
+    task_dict_lock,
+    bot_start_time,
+    status_dict,
+    DOWNLOAD_DIR,
+    sabnzbd_client, # Added from second file
+)
 from ...core.config_manager import Config
+from ...core.torrent_manager import TorrentManager # Added from second file
+from ...core.jdownloader_booter import jdownloader # Added from second file
 from ..telegram_helper.button_build import ButtonMaker
+from ..helper.ext_utils.status_utils import ( # Assuming this path from second file
+    MirrorStatus,
+    get_readable_file_size,
+    get_readable_time,
+    speed_string_to_bytes,
+)
+
+
+# --- This is the new helper function to calculate overall speeds ---
+async def get_download_status(download):
+    """Helper to get status and speed from a download object."""
+    tool = download.tool
+    speed = 0
+    if tool in ["telegram", "yt-dlp", "rclone", "gDriveApi"]:
+        # Get speed for specific download types
+        speed = speed_string_to_bytes(download.speed())
+        
+    status = (
+        await download.status()
+        if iscoroutinefunction(download.status)
+        else download.status()
+    )
+    return status, speed
+
+
+async def calculate_overall_speeds():
+    """
+    Calculates and returns the overall download, upload, and seed speeds
+    across all active services and tasks.
+    """
+    dl_speed = 0
+    up_speed = 0
+    
+    # Get overall torrent speeds
+    torrent_dl_speed, seed_speed = await TorrentManager.overall_speed()
+    dl_speed += torrent_dl_speed
+
+    # Add Sabnzbd speed if active
+    if sabnzbd_client.LOGGED_IN:
+        sds = await sabnzbd_client.get_downloads()
+        dl_speed += int(float(sds["queue"].get("kbpersec", "0"))) * 1024
+
+    # Add JDownloader speed if active
+    if jdownloader.is_connected:
+        jdres = await jdownloader.device.downloadcontroller.get_speed_in_bytes()
+        dl_speed += jdres
+
+    # Add speeds from other individual tasks (gDrive, yt-dlp, etc.)
+    async with task_dict_lock:
+        if not task_dict:
+            return dl_speed, up_speed, seed_speed
+            
+        status_results = await gather(
+            *(get_download_status(dl) for dl in task_dict.values())
+        )
+        for status, speed in status_results:
+            if status == MirrorStatus.STATUS_DOWNLOAD:
+                dl_speed += speed
+            elif status == MirrorStatus.STATUS_UPLOAD:
+                up_speed += speed
+                
+    return dl_speed, up_speed, seed_speed
+
+# --- Your original code, now modified to use the new function ---
 
 SIZE_UNITS = ["B", "KB", "MB", "GB", "TB", "PB"]
-
-
-class MirrorStatus:
-    STATUS_UPLOAD = "Upload"
-    STATUS_DOWNLOAD = "Download"
-    STATUS_CLONE = "Clone"
-    STATUS_QUEUEDL = "QueueDl"
-    STATUS_QUEUEUP = "QueueUp"
-    STATUS_PAUSED = "Pause"
-    STATUS_ARCHIVE = "Archive"
-    STATUS_EXTRACT = "Extract"
-    STATUS_SPLIT = "Split"
-    STATUS_CHECK = "CheckUp"
-    STATUS_SEED = "Seed"
-    STATUS_SAMVID = "SamVid"
-    STATUS_CONVERT = "Convert"
-    STATUS_FFMPEG = "FFmpeg"
-
 
 STATUSES = {
     "ALL": "All",
@@ -67,9 +123,8 @@ async def get_specific_tasks(status, user_id):
         if user_id
         else list(task_dict.values())
     )
-    coro_tasks = []
-    coro_tasks.extend(tk for tk in tasks_to_check if iscoroutinefunction(tk.status))
-    coro_statuses = await gather(*[tk.status() for tk in coro_tasks])
+    coro_tasks = [tk for tk in tasks_to_check if iscoroutinefunction(tk.status)]
+    coro_statuses = await gather(*(tk.status() for tk in coro_tasks))
     result = []
     coro_index = 0
     for tk in tasks_to_check:
@@ -88,63 +143,6 @@ async def get_specific_tasks(status, user_id):
 async def get_all_tasks(req_status: str, user_id):
     async with task_dict_lock:
         return await get_specific_tasks(req_status, user_id)
-
-
-def get_readable_file_size(size_in_bytes):
-    if not size_in_bytes:
-        return "0B"
-
-    index = 0
-    while size_in_bytes >= 1024 and index < len(SIZE_UNITS) - 1:
-        size_in_bytes /= 1024
-        index += 1
-
-    return f"{size_in_bytes:.2f}{SIZE_UNITS[index]}"
-
-
-def get_readable_time(seconds: int):
-    periods = [("d", 86400), ("h", 3600), ("m", 60), ("s", 1)]
-    result = ""
-    for period_name, period_seconds in periods:
-        if seconds >= period_seconds:
-            period_value, seconds = divmod(seconds, period_seconds)
-            result += f"{int(period_value)}{period_name}"
-    return result
-
-
-def time_to_seconds(time_duration):
-    try:
-        parts = time_duration.split(":")
-        if len(parts) == 3:
-            hours, minutes, seconds = map(float, parts)
-        elif len(parts) == 2:
-            hours = 0
-            minutes, seconds = map(float, parts)
-        elif len(parts) == 1:
-            hours = 0
-            minutes = 0
-            seconds = float(parts[0])
-        else:
-            return 0
-        return hours * 3600 + minutes * 60 + seconds
-    except:
-        return 0
-
-
-def speed_string_to_bytes(size_text: str):
-    size = 0
-    size_text = size_text.lower()
-    if "k" in size_text:
-        size += float(size_text.split("k")[0]) * 1024
-    elif "m" in size_text:
-        size += float(size_text.split("m")[0]) * 1048576
-    elif "g" in size_text:
-        size += float(size_text.split("g")[0]) * 1073741824
-    elif "t" in size_text:
-        size += float(size_text.split("t")[0]) * 1099511627776
-    elif "b" in size_text:
-        size += float(size_text.split("b")[0])
-    return size
 
 
 def get_progress_bar_string(pct):
@@ -220,7 +218,7 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
         elif tstatus == MirrorStatus.STATUS_SEED:
             msg += f"\n<b>Size: </b>{task.size()}"
             msg += f"\n<b>Speed: </b>{task.seed_speed()}"
-            msg += f"\n<b>Uploaded: </b>{task.uploaded_bytes()}"
+            msg += f"\n<b>Uploaded: __{task.uploaded_bytes()}__"
             msg += f"\n<b>Ratio: </b>{task.ratio()}"
             msg += f" | <b>Time: </b>{task.seeding_time()}"
         else:
@@ -232,6 +230,7 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
             return None, None
         else:
             msg = f"No Active {status} Tasks!\n\n"
+
     buttons = ButtonMaker()
     if not is_user:
         buttons.data_button("📜", f"status {sid} ov", position="header")
@@ -248,6 +247,17 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
                 buttons.data_button(label, f"status {sid} st {status_value}")
     buttons.data_button("♻️", f"status {sid} ref", position="header")
     button = buttons.build_menu(8)
+    
+    # ---- MODIFICATION: Call the new function and use the results ----
+    dl_speed, up_speed, seed_speed = await calculate_overall_speeds()
+    
     msg += f"<b>CPU:</b> {cpu_percent()}% | <b>FREE:</b> {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)}"
     msg += f"\n<b>RAM:</b> {virtual_memory().percent}% | <b>UPTIME:</b> {get_readable_time(time() - bot_start_time)}"
+    
+    # Corrected the multi-line f-string and used the calculated speed variables
+    msg += f"""
+<b>ODLS:</b> {get_readable_file_size(dl_speed)}/s
+<b>OULS:</b> {get_readable_file_size(up_speed)}/s
+<b>OSDS:</b> {get_readable_file_size(seed_speed)}/s"""
+    
     return msg, button
